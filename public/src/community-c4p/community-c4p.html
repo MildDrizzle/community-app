@@ -1,0 +1,48 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../shared-styles.html">
+
+<dom-module id="community-c4p">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+      }
+
+      .c4p-card {
+        height: : 60px;
+        background-color: white;
+        padding: 10px;
+      }
+    </style>
+
+    <paper-tabs>
+      <paper-tab>Nuevos</paper-tab>
+      <paper-tab>Pasados</paper-tab>
+    </paper-tabs>
+
+    <div class="c4p-card">  
+      <b>DevFest Lisboa</b><br>
+      Lisboa, 10/11 November<br>
+      Apply <a target="_blank" href="https://t.co/WgkuMWpqlJ">here</a>
+    </div>
+  </template>
+
+  <script>
+    class CommunityC4P extends Polymer.Element {
+      static get is() { return 'community-c4p'; }
+    }
+
+    window.customElements.define(CommunityC4P.is, CommunityC4P);
+  </script>
+</dom-module>

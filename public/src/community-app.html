@@ -1,0 +1,253 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-scroll-effects/app-scroll-effects.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/polymerfire/polymerfire.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="my-icons.html">
+
+<link rel="lazy-import" href="community-contacts.html">
+<link rel="lazy-import" href="community-memes.html">
+<link rel="lazy-import" href="community-c4p.html">
+<link rel="lazy-import" href="my-view404.html">
+
+<dom-module id="community-app">
+  <template>
+    <style>
+      :host {
+        --app-primary-color: #4285f4;
+        --app-secondary-color: black;
+
+        display: block;
+      }
+
+      app-drawer-layout:not([narrow]) [drawer-toggle] {
+        display: none;
+      }
+
+      app-header {
+        color: #fff;
+        background-color: var(--app-primary-color);
+      }
+
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
+
+      .drawer-list {
+        margin: 0 20px;
+      }
+
+      .drawer-list a {
+        display: block;
+        padding: 0 16px;
+        text-decoration: none;
+        color: var(--app-secondary-color);
+        line-height: 40px;
+      }
+
+      .drawer-list a.iron-selected {
+        color: black;
+        font-weight: bold;
+      }
+
+      .user-profile img {
+        width: 36px;
+        border-radius: 50%;
+        margin-left: 17px;
+        margin-right: 5px;
+        vertical-align: bottom;
+      }
+    </style>
+
+    <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
+    <app-route
+        route="{{route}}"
+        pattern="[[rootPath]]:page"
+        data="{{routeData}}"
+        tail="{{subroute}}"></app-route>
+
+    <firebase-app
+      name="community"
+      api-key="AIzaSyCnoa_yAPtg6tc9o-QbTb-Ci5BV7dqkTJ0"
+      auth-domain="gdgspainsummit.firebaseapp.com"
+      database-url="https://gdgspainsummit.firebaseio.com"
+      storage-bucket="gdgspainsummit.appspot.com"
+      messaging-sender-id="28209766823">
+    </firebase-app>
+    <firebase-auth 
+      id="auth"
+      app-name="community"
+      user="{{user}}" 
+      signed-in="{{signedIn}}"
+      provider="google" 
+      on-error="handleError"></firebase-auth>
+
+    <app-drawer-layout fullbleed narrow="{{narrow}}">
+      <!-- Drawer content -->
+      <app-drawer id="drawer" slot="drawer" swipe-open="[[narrow]]">
+        <app-toolbar>Menu</app-toolbar>
+        <template is="dom-if" if="[[signedIn]]">
+          <div class="user-profile">
+            <img src="[[user.providerData.0.photoURL]]?sz=36">
+            [[user.providerData.0.displayName]]
+            <paper-icon-button icon="icons:settings" on-tap="_goToSettings"></paper-icon-button>
+          </div>
+          <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+            <a name="contacts" href="[[rootPath]]contacts">Contactos</a>
+            <a name="memes" href="[[rootPath]]memes">Memes</a>
+            <a name="c4p" href="[[rootPath]]c4p">Call for Papers</a>
+          </iron-selector>
+        </template>
+      </app-drawer>
+
+      <!-- Main content -->
+      <app-header-layout has-scrolling-region>
+
+        <app-header slot="header" condenses reveals effects="waterfall">
+          <app-toolbar>
+            <paper-icon-button icon="icons:menu" drawer-toggle></paper-icon-button>
+            <div main-title>GDG Spain</div>
+          </app-toolbar>
+        </app-header>
+
+        <iron-pages
+            selected="[[page]]"
+            attr-for-selected="name"
+            fallback-selection="view404"
+            role="main">
+          <community-login name="login" on-sign-in="signIn"></community-login>
+          <community-contacts name="contacts" route="[[route]]" uid="[[user.uid]]"></community-contacts>
+          <community-memes name="memes" narrow$="{{narrow}}"></community-memes>
+          <community-c4p name="c4p"></community-c4p>
+          <community-settings name="settings" uid="[[user.uid]]" on-sign-out="signOut"></community-settings>
+          <my-view404 name="view404"></my-view404>
+        </iron-pages>
+      </app-header-layout>
+    </app-drawer-layout>
+  </template>
+
+  <script>
+    class CommunityApp extends Polymer.Element {
+      static get is() { return 'community-app'; }
+
+      static get properties() {
+        return {
+          page: {
+            type: String,
+            reflectToAttribute: true,
+            observer: '_pageChanged',
+          },
+          signedIn: {
+            type: Boolean,
+            observer: '_signedInChanged'
+          },
+          routeData: Object,
+          subroute: String,
+          // This shouldn't be neccessary, but the Analyzer isn't picking up
+          // Polymer.Element#rootPath
+          rootPath: String,
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routePageChanged(routeData.page)'
+        ];
+      }
+
+      _signedInChanged(signedIn) {
+        var self = this;
+        if (signedIn && self.page == 'login') {
+          self._goTo('/contacts');
+        }
+      }
+
+      signIn() {
+        var self = this;
+        self.$.auth.signInWithPopup()
+          .then(function(response) {
+            let uid = response.user.uid,
+                displayName = response.user.providerData[0].displayName,
+                photo = response.user.providerData[0].photoURL,
+                email = response.user.providerData[0].email;
+
+            firebase.apps[0].database().ref('users/' + uid).once('value')
+              .then(function(snapshot) {
+                if (snapshot.val()==null){
+                  firebase.apps[0].database().ref('users/' + uid).set({
+                    'displayName': displayName,
+                    'photo': photo,
+                    'email': email
+                  });
+                  self._goToSettings();
+                }
+              });
+          })
+          .catch(function(error) {
+            console.log(error);
+          });
+      }
+
+      signOut() {
+        var self = this;
+        self.$.auth.signOut();
+        self._goTo('/login');
+      }
+
+      _routePageChanged(page) {
+        // If no page was found in the route data, page will be an empty string.
+        // Deault to 'contacts' in that case.
+        this.page = page || 'login';
+
+        // Close a non-persistent drawer when the page & route are changed.
+        if (!this.$.drawer.persistent) {
+          this.$.drawer.close();
+        }
+      }
+
+      _pageChanged(page) {
+        // Load page import on demand. Show 404 page if fails
+        var resolvedPageUrl = this.resolveUrl('community-' + page + '/community-' + page + '.html');
+        Polymer.importHref(
+            resolvedPageUrl,
+            null,
+            this._showPage404.bind(this),
+            true);
+      }
+
+      _goToSettings() {
+        var self = this;
+        this._goTo('/settings');
+      }
+
+      _goTo(location) {
+        window.history.pushState({}, null, location);
+        window.dispatchEvent(new CustomEvent('location-changed'));
+      }
+
+      _showPage404() {
+        this.page = 'view404';
+      }
+    }
+
+    window.customElements.define(CommunityApp.is, CommunityApp);
+  </script>
+</dom-module>

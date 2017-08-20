@@ -1,0 +1,217 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/app-route/app-route.html">
+<link rel="import" href="../../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+
+<link rel="import" href="../shared-styles.html">
+
+<dom-module id="community-contacts">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+      }
+
+      .card-row {
+        background-color: white;
+        height: 60px;
+        padding: 10px 20px;
+      }
+
+      .card-row img {
+        width: 60px;
+        height: 60px;
+        vertical-align: middle;
+      }
+
+      .card-row .details {
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+
+      .card-row .details .name{
+        font-size: 21px;
+        max-width: 182px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .card-row .details .community{
+        color: rgb(100,100,100);
+        max-width: 182px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .toolbar {
+        background-color: white;
+      }
+
+      .card-row paper-icon-button {
+        top: 10px;
+        float: right;
+      }
+    </style>
+
+    <app-route
+      route="{{route}}"
+      pattern="/contacts/:id"
+      active="{{detailActive}}"
+      data="{{routeData}}"></app-route>
+
+    <firebase-query
+      app-name="community"
+      path="users"
+      data="{{users}}"
+      on-data-changed="_usersChanged">
+    </firebase-query>
+
+    <firebase-query
+      app-name="community"
+      path="known-users/[[uid]]"
+      data="{{knownUsers}}"
+      on-data-changed="_usersChanged">
+    </firebase-query>
+
+    <iron-pages
+      selected="[[page]]"
+      attr-for-selected="name"
+      fallback-selection="list">
+      <div name="list">
+        <paper-tabs selected="{{listTab}}">
+          <paper-tab>CONOCIDOS</paper-tab>
+          <paper-tab>POR CONOCER</paper-tab>
+        </paper-tabs>
+        <template id="users-list" is="dom-repeat" items="{{users}}" as="user" filter="{{_filterKnownContacts(listTab)}}">
+          <div class="card-row" on-click="_showDetail">
+            <img src="[[user.photo]]?sz=60">
+            <div class="details">
+              <div class="name">[[user.displayName]]</div>
+              <div class="community">[[user.community]]</div>
+            </div>
+            <paper-icon-button icon="icons:remove-circle" on-tap="_markAsKnown"></paper-icon-button>
+          </div>
+        </template>
+      </div>
+      
+      <div class="detail" name="detail">
+        <div class="toolbar">
+          <paper-icon-button icon="icons:arrow-back" on-click="_showList"></paper-icon-button>
+        </div>
+        <template is="dom-if" if="[[userDetail]]">
+          <b>[[userDetail.displayName]]</b><br>
+          [[userDetail.community]]<br>
+          <img src="[[userDetail.photo]]?sz=400">
+        </template>
+      </div>
+    </iron-pages>
+
+  </template>
+
+  <script>
+    class CommunityContacts extends Polymer.Element {
+      static get is() { return 'community-contacts'; }
+      static get properties() {
+        return {
+          listTab: {
+            type: Number,
+            value: 0
+          },
+          userDetail: Object
+        };
+      }
+
+      static get observers() {
+        return [
+          '_detailActiveChanged(detailActive)',
+          '_routeDataChanged(routeData.id)'
+        ]
+      }
+
+      _detailActiveChanged(active) {
+        this.page = active?"detail":"list";
+      }
+
+      _routeDataChanged(id) {
+        var self = this;
+        if (!self.userDetail || self.userDetail.$key != id) {
+          let u = self.users.find(o => {
+            return o.$key == id
+          });
+          this.set('userDetail', u);
+        }
+      }
+
+      _usersChanged() {
+        // todo: debounce this
+        //console.log("users changed");
+        var self = this;
+        self.$['users-list'].render();
+        if (self.page == "detail"){
+          self._routeDataChanged(self.routeData.id);
+        }
+      }
+
+      _findKnownContacts(key) {
+        var self = this;
+        return self.knownUsers.find(o => {
+          return o.$val == key;
+        });
+      }
+
+      _filterKnownContacts(tab) {
+        var self = this;
+        if (tab==0) {
+          return p => { return self._findKnownContacts(p.$key) != undefined }
+        } else {
+          return p => { return self._findKnownContacts(p.$key) == undefined }
+        }
+      }
+
+      _markAsKnown(e) {
+        e.preventDefault();
+        var self = this,
+            db = window.firebase.apps[0].database(),
+            userKey = e.model.user.$key,
+            myRef = db.ref('known-users/'+ self.uid);
+        
+        let userIsKnown = self._findKnownContacts(userKey);
+
+        if (userIsKnown) {
+          myRef.child(userIsKnown.$key).remove();
+        } else {
+          myRef.push(userKey);
+        }
+
+      }
+
+      _showList() {
+        window.history.pushState({}, null, '/contacts');
+        window.dispatchEvent(new CustomEvent('location-changed'));
+      }
+
+      _showDetail(e) {
+        let uid = e.model.user.$key;
+        window.history.pushState({}, null, '/contacts/' + uid);
+        window.dispatchEvent(new CustomEvent('location-changed'));
+      }
+
+    }
+
+    window.customElements.define(CommunityContacts.is, CommunityContacts);
+  </script>
+</dom-module>

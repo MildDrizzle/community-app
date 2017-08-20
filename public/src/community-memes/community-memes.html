@@ -1,0 +1,179 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../../bower_components/polymerfire/polymerfire.html">
+<link rel="import" href="../shared-styles.html">
+
+<dom-module id="community-memes">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+      }
+
+      paper-card {
+        margin: 3px;
+        --paper-card-header-image: {
+          --iron-image-height: 180px;
+          --iron-image-width: auto;
+        };
+      }
+
+      paper-card[narrow] {
+        width: 100%;
+        margin: 3px;
+        --paper-card-header-image: {
+          --iron-image-height: auto;
+          --iron-image-width: 100%;
+        };
+      }
+
+      paper-card .card-actions {
+        font-size: 12px;
+      }
+
+      paper-card .card-actions paper-icon-button {
+        height: 30px;
+        width: 30px;
+      }
+    </style>
+
+    <firebase-query
+      app-name="community"
+      path="memes"
+      data="{{memes}}"
+      order-by-child="creation">
+    </firebase-query>
+
+    <paper-tabs selected="{{tab}}">
+      <paper-tab>NUEVOS</paper-tab>
+      <paper-tab>TOP</paper-tab>
+    </paper-tabs>
+
+    <paper-input type="file" id="file" on-change="uploadMeme"></paper-input>
+
+    <template is="dom-if" if="[[uploadingMeme]]">
+      <paper-card image="/images/spinner.gif" narrow$={{narrow}}>
+        <div class="card-actions">
+          Uploading... <paper-icon-button icon="icons:block"></paper-icon-button>
+        </div>
+      </paper-card>
+    </template>
+
+    <template is="dom-repeat" items="[[memes]]" as="meme" sort="{{_sortMemes(tab)}}">
+      <paper-card image="[[meme.image]]" narrow$={{narrow}}>
+        <div class="card-actions">
+          <paper-icon-button icon="icons:thumb-up" on-tap="_upVote"></paper-icon-button>
+          <paper-icon-button icon="icons:thumb-down" on-tap="_downVote"></paper-icon-button>
+          [[meme.votes]] – por <a href="/contacts/[[meme.owner.id]]">[[meme.owner.name]]</a>
+        </div>
+      </paper-card>
+    </template>
+    
+
+  </template>
+
+  <script>
+    class CommunityMemes extends Polymer.Element {
+      static get is() { return 'community-memes'; }
+      static get properties() {
+        return {
+          tab: {
+            type: Number,
+            value: 0
+          },
+          memes: Array,
+          narrow: Boolean,
+          uploadingMeme: {
+            type: Boolean,
+            value: false
+          }
+        }  
+      }
+
+      uploadMeme(e) {
+        var self = this,
+            fb = firebase.apps[0],
+            user = fb.auth().currentUser,
+            fileElement = self.$.file,
+            file = fileElement._focusableElement.files[0],
+            timestamp = -Date.now();
+        if (file.type.match('image.*')){
+          self.uploadingMeme = true;
+          var fileName = self._guid() + "." + file.name.split(".").slice(-1).pop();
+          fb.storage().ref('memes/' + fileName).put(file).then(function(snapshot) {
+            self.uploadingMeme = false;
+            fb.database().ref('memes').push({
+              'image': snapshot.downloadURL,
+              'owner': {
+                'name': user.displayName,
+                'id': user.uid
+              },
+              'creation': timestamp,
+              'votes': 0
+            });
+            fileElement.value = "";
+          });
+        } else {
+          console.log('that´s not an image!')
+        }
+      }
+
+      _sortMemes(tab) {
+        var self = this;
+        if (tab==0) {
+          return null;
+        } else {
+          return (a,b) => { 
+            return a.votes > b.votes ? -1 : 1;
+          }
+        }
+      }
+
+      _upVote(e) {
+        var self = this,
+            key = e.model.meme.$key;
+        self._vote(key, 1);
+      }
+
+      _downVote(e) {
+        var self = this,
+            key = e.model.meme.$key;
+        self._vote(key, -1);
+      }
+
+      _vote(key, v) {
+        var fb = firebase.apps[0],
+            user = fb.auth().currentUser,
+            ref = fb.database().ref('meme-votes/');
+        ref.child([key, user.uid].join('/')).set(v);
+      }
+
+      _guid() {
+        function s4() {
+          return Math.floor((1 + Math.random()) * 0x10000)
+            .toString(16)
+            .substring(1);
+        }
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+          s4() + '-' + s4() + s4() + s4();
+      }
+
+    }
+
+    window.customElements.define(CommunityMemes.is, CommunityMemes);
+  </script>
+</dom-module>
