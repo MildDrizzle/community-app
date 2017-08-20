@@ -1,0 +1,178 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../../bower_components/polymerfire/polymerfire.html">
+<link rel="import" href="../shared-styles.html">
+
+<dom-module id="community-sessions">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+        text-align: center;
+      }
+
+      paper-card {
+        width: 100%;
+        max-width: 430px;
+        text-align: left;
+        margin: 5px auto;
+      }
+
+      .session-header {
+        font-size: 20px;
+        font-weight: lighter; 
+      }
+
+      .session-speaker { 
+        color: var(--paper-grey-600);
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .session-bio {
+        font-size: 14px;
+        font-weight: 200;
+      }
+
+      .card-actions
+      .info {
+        display: inline-block;
+        vertical-align: middle;
+        line-height: 40px;
+      }
+
+      .card-actions
+      .enrolment {
+        float:right;
+        vertical-align: middle;
+        line-height: 40px;
+      }
+      
+      .enrolment
+      paper-icon-button {
+        color: #ffc107;
+      }
+    </style>
+
+    <firebase-query
+      app-name="community"
+      path="saved-sessions/[[uid]]"
+      data="{{savedSessions}}">
+    </firebase-query>
+
+    <firebase-query
+      app-name="community"
+      path="sessions"
+      data="{{sessions}}">
+    </firebase-query>
+
+    <paper-tabs selected="{{tab}}">
+      <paper-tab>TODAS</paper-tab>
+      <paper-tab>MI AGENDA</paper-tab>
+    </paper-tabs>
+    
+    <template
+      id="session-list"
+      is="dom-repeat"
+      items="[[sessions]]"
+      as="session"
+      filter="{{_filterSessions(tab)}}">
+    <paper-card image="[[session.picture]]">
+      <div class="card-content">
+        <div class="session-header">
+          [[session.title]]
+        </div>
+        <div class="session-speaker">
+          <span>[[session.speaker]]</span>
+        </div>
+        <p class="session-bio">
+          [[session.bio]]
+        </p>
+      </div>
+      <div class="card-actions">
+        <div class="info">
+          <iron-icon icon="icons:event"></iron-icon>
+          [[session.kind]] – [[session.date]]
+        </div>
+        <div class="enrolment">
+          <paper-icon-button icon="{{_getIcon(session.$key, savedSessions.*)}}" on-tap="_saveSession"></paper-icon-button>
+        </div>
+      </div>
+    </paper-card>
+    </template>
+    
+  </template>
+
+  <script>
+    class CommunitySessions extends Polymer.Element {
+      static get is() { return 'community-sessions'; }
+
+      static get properties() {
+        return {
+          tab: {
+            type: Number,
+            value: 0
+          },
+          sessions: Array,
+          savedSessions: Array
+        };
+      }
+
+      _saveSession(e) {
+        e.preventDefault();
+        var self = this,
+            db = window.firebase.apps[0].database(),
+            userKey = e.model.session.$key,
+            myRef = db.ref('saved-sessions/'+ self.uid);
+        
+        let sessionSaved = self._findSavedSessions(userKey);
+
+        if (sessionSaved) {
+          myRef.child(sessionSaved.$key).remove();
+        } else {
+          myRef.push(userKey);
+        }
+
+        self.$['session-list'].render();
+
+      }
+
+      _findSavedSessions(key) {
+        var self = this;
+        return self.savedSessions.find(o => {
+          return o.$val == key;
+        });
+      }
+
+      _getIcon(key, savedSessions) {
+        var self = this,
+            session = self._findSavedSessions(key);
+        return session?"icons:star":"icons:star-border";
+      }
+
+      _filterSessions(tab) {
+        var self = this;
+        if (tab==0) {
+          return null;
+        } else {
+          return p => { return self._findSavedSessions(p.$key) != undefined }
+        }
+      }
+    }
+
+    window.customElements.define(CommunitySessions.is, CommunitySessions);
+  </script>
+</dom-module>
