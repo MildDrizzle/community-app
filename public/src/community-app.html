@@ -23,10 +23,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
 <link rel="import" href="my-icons.html">
 
-<link rel="lazy-import" href="community-contacts.html">
-<link rel="lazy-import" href="community-memes.html">
-<link rel="lazy-import" href="community-c4p.html">
-<link rel="lazy-import" href="my-view404.html">
+<link rel="lazy-import" href="community-contacts/community-contacts.html">
+<link rel="lazy-import" href="community-memes/community-memes.html">
+<link rel="lazy-import" href="community-login/community-login.html">
+<link rel="lazy-import" href="community-sessions/community-sessions.html">
+<link rel="lazy-import" href="community-settings/community-settings.html">
+<link rel="lazy-import" href="community-view404.html">
 
 <dom-module id="community-app">
   <template>
@@ -140,7 +142,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           <community-memes name="memes" narrow$="{{narrow}}"></community-memes>
           <!--<community-c4p name="c4p"></community-c4p>-->
           <community-settings name="settings" uid="[[user.uid]]" on-sign-out="signOut"></community-settings>
-          <my-view404 name="view404"></my-view404>
+          <community-view404 name="view404"></community-view404>
         </iron-pages>
       </app-header-layout>
     </app-drawer-layout>
