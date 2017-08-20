@@ -9,19 +9,31 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 
 <link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
 
 <dom-module id="community-login">
   <template>
     <style>
       :host {
         display: block;
+        text-align: center;
+      }
+      img {
+        margin-top: 50px;
+      }
+      .title {
+        margin:20px auto;
+        font-size: 28px;
+        font-weight: lighter;
       }
     </style>
 
-    <button on-click="signIn">Login</button>
 
+    <img src="/images/manifest/icon-192x192.png"><br>
+    <div class="title">#GDGSummitES</div>
 
-    
+    <paper-button on-click="signIn">Login con Google</paper-button>
+
   </template>
 
   <script>
