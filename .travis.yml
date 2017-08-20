@@ -16,6 +16,8 @@ install:
   - npm install
   - npm install -g bower
   - bower install
+script:
+  - xvfb-run polymer test
 before_deploy:
   - npm run build
 deploy:
