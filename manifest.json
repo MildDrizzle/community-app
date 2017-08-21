@@ -4,7 +4,7 @@
   "description": "Organización que agrupa a todos los Google Developer Groups de España.",
   "start_url": "./?utm_source=homescreen",
   "display": "standalone",
-  "theme_color": "#ffffff",
+  "theme_color": "#4285f4",
   "background_color": "#f4f4f4",
   "icons": [
     {
